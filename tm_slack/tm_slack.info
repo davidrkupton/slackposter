@@ -1,0 +1,7 @@
+name = "TraderMade Slack Integration"
+description = "Enables integration between website and slack using slack webhooks."
+package = "TraderMade"
+core = "7.x"
+version="7.x.1.0"
+
+dependencies[]=tm_utilities

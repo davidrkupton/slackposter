@@ -1,0 +1,328 @@
+<?php
+/*********************************************
+***   DRUPAL HOOKS
+***	hook_help
+***	hook_user
+***	hook_perm (not implemented)
+
+ */
+global $tmu_var;
+
+function tm_slack_menu(){
+	/* Drupal hook_menu */
+    $items = array();
+    $items['admin/settings/tmslack'] = array(
+        'title' => 'Slack Integration',
+        'description' => 'Manage parameters for the TM-Slack (webhooks for slack) Module',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('tm_slack_admin'),
+        'access arguments' => array('manage slack'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+    $items['admin/config/services/tmslack'] = array(
+        'title' => t('TraderMade Slack Integration'),
+        'description' => 'Manage the Slack Integration module.',
+        'page arguments' => array('tm_slack_admin'),
+        'page callback' => 'drupal_get_form',
+        'access arguments' => array('manage slack'),
+        'type' => MENU_NORMAL_ITEM,
+    );
+    return $items;
+}
+
+function tm_slack_init(){
+    // load any js and css here
+    global $user, $tmu_var, $arrFiles;
+    global $tm_http;
+
+    tm_trace("-> tm_slack.module tm_slack_init()");
+
+    $arrFiles["slack_post_cls.php"] = $_SERVER["DOCUMENT_ROOT"] . "/sites/all/modules/tm_slack/slack_post_cls.php";
+    /* Make sure the default channels are prefixed with a # */
+    $settings=variable_get('tm_slack_settings', array());
+    if(isset($settings['channels']['default']) && substr($settings['channels']['default'],0,1)!="#"){
+        $settings['channels']['default']='#'.$settings['channels']['default'];
+        variable_set('tm_slack_settings',$settings);
+    }
+    if(isset($settings['channels']['support']) && substr($settings['channels']['support'],0,1)!="#"){
+        $settings['channels']['support']='#'.$settings['channels']['support'];
+        variable_set('tm_slack_settings',$settings);
+    }
+
+    $loader = new tm_loader($tmu_var["DEBUG"]);
+    $loader->load(array("variant" => "css", "module" => "tm_slack", "group" => CSS_THEME,
+        "livename" => "/tm_slack.min.css",
+        "debugname" => "/tm_slack.css"));
+    $loader->load(array("variant" => "js", "module" => "tm_slack", "group" => JS_THEME,
+        "livename" => "/tm_slack.closure.js",
+        "debugname" => "/tm_slack.js"));
+    if($user->uid!=0) {
+        $js = "var tm_slack={
+                    'user' : '" . $user->name . "',
+                    'email' : '" . $user->mail . "',
+                    'support' : '" . (empty($settings['channels']['support'])?'':$settings['channels']['support']) ."',
+                    'url' : '" . $tm_http->base_url."/".drupal_get_path('module','tm_slack') ."',
+                    'sf' : " . ($settings['salesforce']['enable']==1?"true":"false") . "
+                };";
+    } else {
+        $js = "var tm_slack={'user' : 'Anon', 'email' : 'Anon', 'support' : '" . $settings['channels']['support'] ."'};";
+    }
+    $loader->load(array("variant" => "js", "type" => "inline", "livename" => $js, "debugname" => $js, "group" => JS_THEME, "weight" => 1000));
+    $loader->queue();
+    unset($loader);
+    tm_trace("<- tm_slack.module tm_slack_init()");
+}
+
+function tm_slack_admin($form_state){
+
+    $form = array();
+
+    $form['#tree'] = TRUE;
+
+    $form['tm_slack_settings'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('General Configuration'),
+        '#description' => t('General Configuration'),
+        '#collapsible' => TRUE,
+    );
+
+    $url_Settings = variable_get('tm_slack_settings', array());
+
+    $form['tm_slack_settings']['integration'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Incoming Webhook URL'),
+        '#default_value' => (strlen($url_Settings['integration'])>0) ? $url_Settings['integration'] : "",
+        '#description' => t("This is the Webhook URL for the 'Incoming Webhook' config in slack (https://tradermade.slack.com/apps/A0F7XDUAZ-incoming-webhooks).<br/>It has a default channel that it publishes to if one is not specified in the tm_slack API calls."),
+        '#required' => TRUE,
+    );
+    $form['tm_slack_settings']['channels'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Slack Channels'),
+        '#description' => t('Confgure the channels that the system will post to.<ul><li>These channels must exist in Slack already.</li><li>Prefix with "#".</li></ul>'),
+        '#collapsible' => TRUE,
+    );
+    $form['tm_slack_settings']['channels']['default'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Default channel to post to'),
+        '#default_value' => (strlen($url_Settings['channels']['default'])>0) ? $url_Settings['channels']['default'] : "test",
+        '#description' => t("This channel will be used by default when no other channel is specified (or overriden by a default in another module)<br/>Note this will override the default channel specified by the slack 'incoming webhook' at all times.."),
+        '#required' => TRUE,
+    );
+    $form['tm_slack_settings']['channels']['support'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Support Call Postings'),
+        '#default_value' => (strlen($url_Settings['channels']['support'])>0) ? $url_Settings['channels']['support'] : "test",
+        '#description' => t("Channel to post support calls to."),
+        '#required' => TRUE,
+    );
+    $form['tm_slack_settings']['salesforce'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Salesforce Integration'),
+        '#description' => t('Configure posting to SalesForce'),
+        '#collapsible' => TRUE,
+    );
+    $form['tm_slack_settings']['salesforce']['enable'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Enable SalesForce integration for support calls posted to slack'),
+        '#default_value' => (strlen($url_Settings['salesforce']['enable'])>0) ? $url_Settings['salesforce']['enable'] : 0,
+        '#description' => t("This module can be configured to post to salesforce at the same time support postings are made to slack."),
+    );
+    $form['tm_slack_settings']['watchdog'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Capture syslog entries (watchdog)'),
+        '#description' => t('Cross-post syslog entries into a slack channel.'),
+        '#collapsible' => TRUE,
+    );
+    $form['tm_slack_settings']['watchdog']['enabled'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Post to Watchdog'),
+        '#default_value' => (strlen($url_Settings['watchdog']['enabled'])>0) ? $url_Settings['watchdog']['enabled'] : 0,
+        '#description' => t("Enable watchdog (drupal syslog) postings to Slack in real-time."),
+    );
+    $form['tm_slack_settings']['watchdog']['integration'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Incoming Webhook URL (watchdog)'),
+        '#default_value' => (!empty($url_Settings['watchdog']['integration'])) ? $url_Settings['watchdog']['integration'] : "",
+        '#description' => t("This is the Webhook URL for the 'Incoming Webhook' config in slack (https://tradermade.slack.com/apps/A0F7XDUAZ-incoming-webhooks).<br/>It has a default channel that it publishes to if one is not specified in the tm_slack API calls.<br/>This Webhook can be the same as the default above, or different."),
+        '#required' => TRUE,
+    );
+    $form['tm_slack_settings']['watchdog']['channel'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Posting Channel'),
+        '#default_value' => !(empty($url_Settings['watchdog']['channel'])) ? $url_Settings['watchdog']['channel'] : "test",
+        '#description' => t("Which Slack channel to post to."),
+    );
+    $form['tm_slack_settings']['watchdog']['severity'] = array(
+        '#type' => 'select',
+        '#options' => watchdog_severity_levels(),
+        '#title' => t('Severity Filter'),
+        '#required' => false,
+        '#multiple' => true,
+        '#default_value' => (!empty($url_Settings['watchdog']['severity'])) ? $url_Settings['watchdog']['severity'] : array(),
+        '#description' => t("Select severity levels to include"),
+    );
+    $form['tm_slack_settings']['watchdog']['filterOut'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Log Type Filter'),
+        '#default_value' => (!empty($url_Settings['watchdog']['filterOut'])) ? $url_Settings['watchdog']['filterOut'] : "",
+        '#description' => t("Provide a list of log types to EXCLUDE from posting to Slack.<br>A commas separated list of log types (e.g. php,debug)"),
+    );
+    $form['tm_slack_settings']['watchdog']['keywords'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Keyword Filter'),
+        '#default_value' => (!empty($url_Settings['watchdog']['keywords'])) ? $url_Settings['watchdog']['keywords'] : "",
+        '#description' => t("Provide a list of keywords in the log body to EXCLUDE from posting to Slack.<br>A commas separated list (e.g. tuesday, test.inc)"),
+    );
+
+    /*$form['tm_slack_settings']['module'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Slack Instance Name'),
+        '#default_value' => (strlen($url_Settings['module'])>0) ? $url_Settings['module'] : "",
+        '#description' => t("This is an identifier for all slack postings.  The username will be suffixed with this string if supplied.."),
+        '#required' => False,
+    );*/
+    //NOTE: not needed, now use $tmu_var app_id value.
+
+    return system_settings_form($form);
+}
+function tm_slack_form_alter(&$form, &$form_state, $form_id){
+    switch($form_id) {
+        case "fxnavigator_admin":
+            $form = tm_slack_fxnavigator_admin($form);
+            break;
+    }
+    return $form;
+}
+
+function tm_slack_fxnavigator_admin(&$form){                                //page
+
+    if(!isset($form['TMAdmin'])) {
+        $form['TMAdmin'] = array(
+            '#type' => 'fieldset',
+            '#title' => t('TraderMade Admin'),
+            '#collapsible' => TRUE,
+        );
+    }
+    $form['TMAdmin']['tmslack']=array(
+        "#markup" => t("<div style='margin-left:20px; margin-top:7px'>
+                        <a href='/admin/setting/tmslack'>
+                            <span class='fa-stack fa-lg'>
+                                <i class='fa fa-square fa-stack-2x ' style='color:orange'></i>
+                                <i class='fa fa-square-o fa-stack-2x ' style='color:inherit'></i>
+                                <i class='fa fa-slack fa-stack-1x' style='color:inherit'></i>
+                            </span>
+                            Configure Slack Integration.
+                        </a><br/>
+                        <div style='margin-left:40px'>Access the TraderMade Slack Integration Utilities.</div>
+                        </div>")
+    );
+
+    return $form;
+}
+function tm_slack_help($path, $arg) {
+	/* Drupal hook_help */
+	$output = '';  //declare your output variable
+  	switch ($path) {
+    	case "admin/help#tm_slack":
+      	$output = '<p>'.  t("Creates the TraderMade slack integration for support") .'</p>';
+      	break;
+  	}
+  	return $output;
+} 
+
+function tm_slack_permission() {
+    return array(
+        'access slack' => array(
+            'title' => t('Make postings to slack'),
+            'description' => t('User can post to TraderMade slack system (Usually permission all users)')),
+        'manage slack' => array(
+            'title' => t('Administer settings'),
+            'description' => t('Administer the Slack module settings (Admins Only)'))
+        );
+}
+
+function tm_slack_post($comment, $channel=null, $usern="Website User"){
+
+    $settings=variable_get('tm_slack_settings', array());
+    if(!isset($channel)) $channel=$settings['channels']['default'];     // use the default channel if not specified
+
+    if(!class_exists("slack_post")) tm_include("slack_post_cls.php");  // posting class
+
+    $slack = new slack_post($settings['integration']);
+    echo $slack->post($comment,$channel,$usern);
+    unset($slack);
+}
+
+/**
+ * Implements hook_watchdog().
+ */
+function tm_slack_watchdog(array $log_entry){
+
+    global $tm_http;
+
+    $settings = variable_get('tm_slack_settings', array());
+
+    if($settings['watchdog']['enabled']) {
+
+        $param = (empty($log_entry['variables'])? array() : $log_entry['variables']);
+        $body = htmlspecialchars_decode(strip_tags(t($log_entry['message'], $param), "<a><br>"));
+
+        // first do the necessary filtering
+        if(!in_array($log_entry['severity'], $settings['watchdog']['severity'])) return;
+        foreach(explode(',', $settings['watchdog']['filterOut']) as $filter){
+            if($log_entry['type'] == trim($filter)) return;
+        }
+        foreach(explode(',', $settings['watchdog']['keywords']) as $filter){
+            if(stripos($body, trim($filter)) !== false) return;
+        }
+
+        // remove extra spaces
+        $body = preg_replace('/[ ]{2,}|[\t]/'," ",$body);
+        $body = str_replace(array('<br>','<br />','<br/>'),"\n",$body);
+
+        try {
+
+            $severity = watchdog_severity_levels();
+
+            if (empty($log_entry['severity'])) $log_entry['severity'] = WATCHDOG_DEBUG;
+            elseif ($log_entry['type'] == 'debug') $log_entry['severity'] = WATCHDOG_DEBUG;
+
+            if (isset($log_entry['user'])) $account = $log_entry['user'];
+            elseif (isset($log_entry['uid'])) $account = user_load($log_entry['uid']);
+            if (empty($log_entry['variables'])) $log_entry['variables'] = array();
+            if (is_numeric($log_entry['variables'])) $log_entry['variables'] = array($log_entry['variables']);
+
+            if (!class_exists("slack_post")) include_once(drupal_get_path("module", "tm_slack") . "/slack_post_cls.php");
+
+            $slack = new slack_post('watchdog', $settings['watchdog']['integration']);
+            $posting = $slack->attachment();
+            $posting->fallback($body);
+            $posting->title('Watchdog ' . $log_entry['type'] . " : " . ucwords($severity[$log_entry['severity']]));
+            $posting->titlelink($tm_http->base_url . '/admin/reports/dblog');
+            $posting->text($body);
+            $posting->addfield("Referer:", (empty($log_entry['referer']) ? '' : $log_entry['referer']), true);
+            $posting->addfield("User:", ((isset($account->name)) ? $account->name : 'Anonymous'). '<br>ip:'.$_SERVER['REMOTE_ADDR'], true)  ;
+            $posting->addfield("Request:", (empty($log_entry['request_uri']) ? '' : $log_entry['request_uri']), true);
+            $posting->addfield("Link:", (empty($log_entry['link']) ? '' : str_ireplace('"/', '"' . $tm_http->base_url . '/', $log_entry['link'])), true);
+
+            $posting->color('warning');
+            if ($log_entry['severity'] == WATCHDOG_EMERGENCY
+                || $log_entry['severity'] == WATCHDOG_CRITICAL
+                || $log_entry['severity'] == WATCHDOG_ERROR
+            ) $posting->color('danger');
+            if ($log_entry['severity'] == WATCHDOG_INFO
+                || $log_entry['severity'] == WATCHDOG_NOTICE
+            ) $posting->color('good');
+            if ($log_entry['severity'] == WATCHDOG_DEBUG)
+                $posting->color('#7D26CD');
+            $slack->attachment($posting->build());
+
+            $slack->channel('#fxnav-dev-log-tail');
+            $slack->channel($settings['watchdog']['channel']);
+
+            $slack->post("New entry in SysLog for website");
+
+        } catch (Exception $e) {}
+    }
+
+}

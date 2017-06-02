@@ -1,0 +1,9 @@
+<?php
+
+function tm_slack_install(){
+    $weight = db_query("SELECT weight FROM {system} WHERE name = 'tm_utilities'")->fetchField();
+        db_update('system')
+            ->fields(array('weight' => $weight+1))
+            ->condition('name', 'tm_slack', '=')
+            ->execute();
+}
