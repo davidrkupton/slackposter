@@ -35,8 +35,12 @@ class SlackAttachment {
 	$config = \Drupal::config('system.site');
 	global $base_url;
 	$this->footer = "Origin: ".$config->get('name') . " (" . $base_url . ")";
-	$this->footer_icon = function_exists("theme_get_setting") ? theme_get_setting('favicon') : '';
 	$this->ts = date("U");
+	try {
+		$this->footer_icon = function_exists("theme_get_setting") ? theme_get_setting('favicon') : '';
+	}
+//	catch (\Exception $e){}
+	catch (\Error $e){}
   }
 
   /**

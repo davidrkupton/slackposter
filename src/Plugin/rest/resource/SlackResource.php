@@ -66,7 +66,7 @@ class SlackResource extends ResourceBase {
 	parent::__construct($configuration, $plugin_id, $plugin_definition, $serializer_formats, $logger);
 
 	$this->currentUser = $current_user;
-	$this->currentformat = $_REQUEST['_format'];
+	if(isset($_REQUEST['_format'])) $this->currentformat = $_REQUEST['_format'];
   }
 
   /**
