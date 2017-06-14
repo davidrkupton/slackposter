@@ -61,8 +61,9 @@ class SlackLogger implements LoggerInterface{
 		if (empty($level)) $level = RfcLogLevel::DEBUG;
 		elseif ($context['channel'] == 'debug') $level = RfcLogLevel::DEBUG;
 
+		$account = new \stdClass();
 		if (isset($context['user'])) $account = $context['user'];
-		elseif (isset($context['uid'])) $account = User::load($context['uid']);
+		elseif (isset($context['uid']) && $context['uid']!=0) $account = User::load($context['uid']);
 
 		//todo see what this is there for...
 		//if (is_numeric($context['variables'])) $context['variables'] = array($context['variables']);
@@ -95,7 +96,7 @@ class SlackLogger implements LoggerInterface{
 
 		$slack->post("New entry in SysLog for website");
 
-	  } catch (Exception $e) {}
+	  } catch (\Exception $e) {}
 	}
   }
 
