@@ -1,8 +1,20 @@
 <?php
 
-function slackposter_modules_installed(){
-  // make sure that tracking module sits below/after the tm_utilities module
+/**
+ * @file
+ * The install file for slackposter module.
+ */
+
+/**
+ * Implements hook_modules_installed.
+ */
+function slackposter_modules_installed() {
+  // Make sure that tracking module sits below/after the tm_utilities module.
   $weight = \Drupal::configFactory()->get('core.extension')->get("module.tm_utilities");
-  if($weight === NULL) $weight = \Drupal::moduleHandler()->moduleExists('tm_utilities');
-  if($weight !== NULL) module_set_weight('module.slackposter', $weight+1);
+  if ($weight === NULL) {
+    $weight = \Drupal::moduleHandler()->moduleExists('tm_utilities');
+  }
+  if ($weight !== NULL) {
+    module_set_weight('module.slackposter', $weight + 1);
+  }
 }

@@ -2,7 +2,7 @@ slackposter.admin:
   path: '/admin/config/system/slackposter'
   defaults:
     _title: 'Slack Integration'
-    _form: '\Drupal\slackposter\Form\slackSettingsForm'
+    _form: '\Drupal\slackposter\Form\SlackSettingsForm'
   requirements:
     _permission: 'administer slack'
 

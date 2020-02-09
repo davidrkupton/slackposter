@@ -1,44 +1,54 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: David
- * Date: 6/1/2017
- * Time: 11:54 AM
- */
 
 namespace Drupal\slackposter\Test;
 
 use Drupal\slackposter\Integrate\SlackPost;
 
+/**
+ * Testing for slackposter.
+ */
 class SlackposterTester {
 
-  static public function main($what){
+  /**
+   * Creates a test post to slack.
+   *
+   * @inheritDoc.
+   */
+  public static function main($what) {
 
-	$out = '';
+    $out = '';
 
-    switch($what){
-		case 'a':
-		    break;
-		default:
-			$slack = new SlackPost();
-			$out = $slack->post('posting test','#test');
-			break;
-	}
-	return $out;
+    switch ($what) {
+      case 'a':
+        break;
+
+      default:
+        $slack = new SlackPost();
+        $out = $slack->post('posting test', '#test');
+        break;
+    }
+    return $out;
   }
 
-	static public function openmain($what){
+  /**
+   * Creates a test post to slack.
+   *
+   * @inheritDoc.
+   */
+  public static function openmain($what) {
 
-	  $out = '';
-		global $base_url;
+    $out = '';
+    global $base_url;
 
-	  switch($what){
-		default:
-		  $slack = new SlackPost();
-		  $out = $slack->post('posting test','#test');
-		  break;
-	  }
-	  return $out;
+    switch ($what) {
+      case "":
+      default:
+        $slack = new SlackPost();
+        $out = $slack->post('posting test', '#test');
+        break;
+    }
+    return $out;
 
-	}
+  }
+
 }

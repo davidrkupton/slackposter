@@ -1,58 +1,24 @@
 <?php
-/*********************************************
-***   DRUPAL HOOKS
-***	hook_help
-***	hook_user
-***	hook_perm (not implemented)
-
- */
-
-
-/*function tm_slack_init(){
-
-  // load any js and css here
-    global $user;
-    global $tm_http;
-
-    $loader = new tm_loader(false);
-    $loader->load(array("variant" => "css", "module" => "tm_slack", "group" => CSS_THEME,
-        "livename" => "/slackposter.min.css",
-        "debugname" => "/slackposter.css"));
-    $loader->load(array("variant" => "js", "module" => "tm_slack", "group" => JS_THEME,
-        "livename" => "/tm_slack.closure.js",
-        "debugname" => "/slackposter.js"));
-    if($user->uid!=0) {
-        $js = "var tm_slack={
-                    'user' : '" . $user->name . "',
-                    'email' : '" . $user->mail . "',
-                    'support' : '" . (empty($settings['channels']['support'])?'':$settings['channels']['support']) ."',
-                    'url' : '" . $tm_http->base_url."/".drupal_get_path('module','tm_slack') ."',
-                    'sf' : " . ($settings['salesforce']['enable']==1?"true":"false") . "
-                };";
-    } else {
-        $js = "var tm_slack={'user' : 'Anon', 'email' : 'Anon', 'support' : '" . $settings['channels']['support'] ."'};";
-    }
-    $loader->load(array("variant" => "js", "type" => "inline", "livename" => $js, "debugname" => $js, "group" => JS_THEME, "weight" => 1000));
-    $loader->queue();
-    unset($loader);
-}*/
-
-// D8 below
 
 /**
- * This is the hook_help for drupal
- * Redirect to the Controller class
- * @param string $path
- * @param array $arg
- * @return string
+ * @file
+ * Slackposter module.
  */
-function slackposter_help($path, $arg){
 
-  $out='';
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\slackposter\Controller\SlackController;
+
+/**
+ * {@inheritDoc}
+ */
+function slackposter_help($path, $arg) {
+
+  $out = '';
   switch ($path) {
-	case "help.page.slackposter":
-	  $controller = new \Drupal\slackposter\Controller\SlackController();
-	  $out = $controller->helpPage();
+    case "help.page.slackposter":
+      $controller = new SlackController();
+      $out = $controller->helpPage();
+      break;
   }
   return $out;
 
@@ -60,22 +26,21 @@ function slackposter_help($path, $arg){
 
 /**
  * This is a callback from the slack admin form for validation.
- * @param array $form
- * @param \Drupal\Core\Form\FormStateInterface $form_state
- * @return bool
+ *
+ * {@inheritDoc}
  */
-function slackposter_form_slackposter_admin_settings_validate(array &$form, \Drupal\Core\Form\FormStateInterface $form_state){
+function slackposter_form_slackposter_admin_settings_validate(array &$form, FormStateInterface $form_state) {
 
   $settings = $form_state->getValue('slackposter');
 
-  if($settings['watchdog']['watchdog.enabled'] && !$settings['watchdog']['watchdog.integration']) {
-    // integration field is required if watchdog is enabled...
-	$form_state->setErrorByName('watchdog.integration', t('Must provide a webhook if syslog capture is enabled'));
-	$form = $form_state->getCompleteForm();
-	$form['slackposter']['watchdog']['#open']=true;
-	$form['slackposter']['watchdog']['watchdog.integration']['#attributes']['class'][]='error';
-	$form_state->setCompleteForm($form);
-	return false;
+  if ($settings['watchdog']['watchdog.enabled'] && !$settings['watchdog']['watchdog.integration']) {
+    // Integration field is required if watchdog is enabled...
+    $form_state->setErrorByName('watchdog.integration', t('Mus  t provide a webhook if syslog capture is enabled'));
+    $form = $form_state->getCompleteForm();
+    $form['slackposter']['watchdog']['#open'] = TRUE;
+    $form['slackposter']['watchdog']['watchdog.integration']['#attributes']['class'][] = 'error';
+    $form_state->setCompleteForm($form);
+    return FALSE;
   }
 
 }

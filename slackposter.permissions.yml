@@ -1,7 +1,7 @@
 #
 post slack:
     title: 'Make postings to slack'
-    description: 'User can post to TraderMade slack system (Usually permission all users)'
+    description: 'User can post to Slack (Usually permission all users)'
 administer slack:
     title: 'Administer settings'
     description: 'Administer the Slack module settings (Admins Only)'
