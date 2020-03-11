@@ -1,4 +1,3 @@
-#
 post slack:
     title: 'Make postings to slack'
     description: 'User can post to Slack (Usually permission all users)'

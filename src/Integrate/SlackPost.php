@@ -65,40 +65,10 @@ class SlackPost {
    */
   private $arrImages = [
     "default" => [
-      "default" => "images/tradermade-user.png",
-      "info" => "images/tradermade-user.png",
-      "warning" => "images/tradermade-user.png",
-      "error" => "images/tradermade-user.png",
-    ],
-    "scheduler" => [
-      "default" => "images/schedule-user.png",
-      "info" => "images/schedule-user-green.png",
-      "warning" => "images/schedule-user-yellow.png",
-      "error" => "images/schedule-user-red.png",
-    ],
-    "payments" => [
-      "default" => "images/payment-user-green.png",
-      "info" => "images/payment-user-green.png",
-      "warning" => "images/payment-user-yellow.png",
-      "error" => "images/payment-user-red.png",
-    ],
-    "support" => [
-      "default" => "images/support-user-green.png",
-      "info" => "images/support-user-green.png",
-      "warning" => "images/support-user-yellow.png",
-      "error" => "images/support-user-red.png",
-    ],
-    "tradermade" => [
-      "default" => "images/tradermade-user.png",
-      "info" => "images/tradermade-user.png",
-      "warning" => "images/tradermade-user.png",
-      "error" => "images/tradermade-user.png",
-    ],
-    "web" => [
-      "default" => "images/web-user.png",
-      "info" => "images/web-user-green.png",
-      "warning" => "images/web-user-yellow.png",
-      "error" => "images/web-user-red.png",
+      "default" => "images/drupal.png",
+      "info" => "images/drupal.png",
+      "warning" => "images/drupal.png",
+      "error" => "images/drupal.png",
     ],
   ];
 
@@ -262,8 +232,10 @@ class SlackPost {
     if ($attachment->pretext) {
       $attachment->pretext = $this->reformat($attachment->pretext);
     }
-    foreach ($attachment->fields as &$field) {
-      $field->value = $this->reformat($field->value);
+    if (isset($attachment->fields)) {
+      foreach ($attachment->fields as &$field) {
+        $field->value = $this->reformat($field->value);
+      }
     }
 
     // Now save the attahment to this class.

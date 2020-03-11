@@ -47,6 +47,17 @@ class SlackSettingsForm extends ConfigFormBase {
           '#description' => t("This is the Webhook URL for the 'Incoming Webhook' config in slack (https://xxxx.slack.com/apps/ABCDE01234-incoming-webhooks).<br/>(It has a default channel that it publishes to if one is not specified.)"),
           '#required' => TRUE,
         ],
+        'rest' => [
+          '#type' => 'details',
+          '#title' => t('REST API Endpoint'),
+          '#open' => FALSE,
+          'rest.enabled' => [
+            '#type' => 'checkbox',
+            '#title' => t('Create a REST endpoint and respond to requests.'),
+            '#default_value' => (strlen($config->get('rest.enabled')) > 0) ? $config->get('rest.enabled') : 0,
+            '#description' => t("Allow posting to Slack via a REST API (webhook) from this site."),
+          ],
+        ],
         'channels' => [
           '#type' => 'details',
           '#title' => t('Slack Channels'),
@@ -58,26 +69,6 @@ class SlackSettingsForm extends ConfigFormBase {
             '#default_value' => (strlen($config->get('channels.default')) > 0) ? $config->get('channels.default') : "test",
             '#description' => t("This channel will be used by default when no other channel is specified (or overriden by a default in another module)<br/>Note this will override the default channel specified by the slack 'incoming webhook' at all times.."),
             '#required' => TRUE,
-          ],
-          'channels.support' => [
-            '#type' => 'textfield',
-            '#title' => t('Support Call Postings'),
-            '#default_value' => (strlen($config->get('channels.support')) > 0) ? $config->get('channels.support') : "test",
-            '#description' => t("Channel to post support calls to."),
-            '#required' => TRUE,
-          ],
-        ],
-        'salesforce' => [
-          '#type' => 'details',
-          '#title' => t('Salesforce Integration'),
-          '#description' => t('Configure posting to SalesForce'),
-          '#open' => FALSE,
-
-          'salesforce.enable' => [
-            '#type' => 'checkbox',
-            '#title' => t('Enable SalesForce integration for support calls posted to slack'),
-            '#default_value' => (strlen($config->get('salesforce.enable')) > 0) ? $config->get('salesforce.enable') : 0,
-            '#description' => t("This module can be configured to post to salesforce at the same time support postings are made to slack."),
           ],
         ],
         'watchdog' => [
@@ -139,7 +130,6 @@ class SlackSettingsForm extends ConfigFormBase {
 
     // Validation.
     $settings['channels']['channels.default'] = '#' . trim($settings['channels']['channels.default'], '#');
-    $settings['channels']['channels.support'] = '#' . trim($settings['channels']['channels.support'], '#');
     $settings['watchdog']['watchdog.channel'] = '#' . trim($settings['watchdog']['watchdog.channel'], '#');
     if ($settings['watchdog']['watchdog.enabled'] && !$settings['watchdog']['watchdog.channel']) {
       $settings['watchdog']['watchdog.channel'] = $settings['channels']['channels.default'];
@@ -150,8 +140,7 @@ class SlackSettingsForm extends ConfigFormBase {
     $this->config('slackposter.settings')
       ->set('integration', $settings['integration'])
       ->set('channels.default', $settings['channels']['channels.default'])
-      ->set('channels.support', $settings['channels']['channels.support'])
-      ->set('salesforce.enable', $settings['salesforce']['salesforce.enable'])
+      ->set('rest.enabled', $settings['rest']['rest.enabled'])
       ->set('watchdog.enabled', $settings['watchdog']['watchdog.enabled'])
       ->set('watchdog.integration', $settings['watchdog']['watchdog.integration'])
       ->set('watchdog.channel', $settings['watchdog']['watchdog.channel'])

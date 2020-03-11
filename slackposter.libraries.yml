@@ -1,7 +1,0 @@
-theme:
-  version: 1.0
-  js:
-    theme/slackposter.js: {}
-  dependencies:
-    - core/jquery
-    - core/drupalSettings

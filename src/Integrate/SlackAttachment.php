@@ -23,6 +23,10 @@ class SlackAttachment {
   /**
    * Color.
    *
+   * Changes the color of the border on the left side of this attachment
+   * from the default gray. Can either be one of good (green),
+   * warning (yellow), danger (red), or any hex color code (eg. #439FE0).
+   *
    * @var string
    */
   public $color;
